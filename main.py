@@ -33,6 +33,7 @@ def loadVersions(url=MASTER):
         'nix-instantiate', str(LOAD_META_FROM_PATH),
         '--arg', 'url', str(url),
         '--eval', '--json',
+        '--read-write-mode',
     ])
 
     return json.loads(json_output)
