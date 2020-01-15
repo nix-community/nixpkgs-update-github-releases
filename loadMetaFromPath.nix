@@ -15,6 +15,8 @@ let
           deepSeqId (
             assert (value.version or null) != null;
             assert (value.meta.homepage or null) != null;
+            assert pkgs.lib.isString value.version;
+            assert pkgs.lib.isString value.meta.homepage;
             {
               inherit (value) version;
               inherit (value.meta) homepage;
