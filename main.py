@@ -96,32 +96,16 @@ def removePrefix(prefix, string):
 
 
 def stripRelease(repo, release):
-    prefixes = ['V',
-                'v',
-                'V-',
-                'v-',
-                'V_',
-                'v_',
-                'V.',
-                'v.',
-                "version",
-                'release',
-                "release_",
-                "RELEASE.",
-                "stable-",
-                repo.lower() + '-',
-                repo.lower() + '_',
-                repo.lower() + '.',
-                repo.lower() + '/',
-                repo.upper() + '-',
-                repo.upper() + '_',
-                repo.upper() + '.',
-                repo.upper() + '/',
-                repo + '-',
-                repo + '_',
-                repo + '.',
-                repo + '/',
-                ]
+    rawPrefixes = [*'v version release stable'.split(), repo]
+    joiners = [*'- _ . /'.split(), '']
+    modifiers = [str.lower, str.upper, str.title, lambda x: x]
+    prefixes = {
+        modifier(raw) + joiner
+        for modifier in modifiers
+        for joiner in joiners
+        for raw in rawPrefixes
+    }
+
     for prefix in prefixes:
         release = removePrefix(prefix, release)
     return release
