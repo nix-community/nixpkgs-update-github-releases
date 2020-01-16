@@ -121,10 +121,11 @@ def stripRelease(repo, release):
                 repo + '_',
                 repo + '.',
                 repo + '/',
-               ]
+                ]
     for prefix in prefixes:
         release = removePrefix(prefix, release)
     return release
+
 
 # Filter out pre-releases that weren't marked on GitHub as such
 def skipPrerelease(release):
@@ -136,11 +137,12 @@ def skipPrerelease(release):
                "beta",
                "snapshot",
                "testing",
-              ]
+               ]
     for marker in markers:
         if marker in release:
             return True
     return False
+
 
 def getNextVersion(version, homepage):
     userRepo = getUserRepoPair(homepage)
@@ -186,5 +188,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main(
-)
+    main()
