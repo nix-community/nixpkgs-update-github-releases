@@ -95,12 +95,52 @@ def removePrefix(prefix, string):
     return string[len(prefix):]
 
 
-def stripRelease(release):
-    prefixes = 'v'.split()
+def stripRelease(repo, release):
+    prefixes = ['V',
+                'v',
+                'V-',
+                'v-',
+                'V_',
+                'v_',
+                'V.',
+                'v.',
+                "version",
+                'release',
+                "release_",
+                "RELEASE.",
+                "stable-",
+                repo.lower() + '-',
+                repo.lower() + '_',
+                repo.lower() + '.',
+                repo.lower() + '/',
+                repo.upper() + '-',
+                repo.upper() + '_',
+                repo.upper() + '.',
+                repo.upper() + '/',
+                repo + '-',
+                repo + '_',
+                repo + '.',
+                repo + '/',
+               ]
     for prefix in prefixes:
         release = removePrefix(prefix, release)
     return release
 
+# Filter out pre-releases that weren't marked on GitHub as such
+def skipPrerelease(release):
+    lower = release.lower()
+    markers = ["nightly",
+               "develop",
+               "rc",
+               "alpha",
+               "beta",
+               "snapshot",
+               "testing",
+              ]
+    for marker in markers:
+        if marker in release:
+            return True
+    return False
 
 def getNextVersion(version, homepage):
     userRepo = getUserRepoPair(homepage)
@@ -119,7 +159,10 @@ def getNextVersion(version, homepage):
     if nextVersion.endswith(version):
         return
 
-    stripped = stripRelease(nextVersion)
+    if skipPrerelease(nextVersion):
+        return
+
+    stripped = stripRelease(userRepo[1], nextVersion)
 
     return stripped
 
@@ -143,4 +186,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    main(
+)
