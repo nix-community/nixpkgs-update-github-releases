@@ -27,6 +27,12 @@ log = partial(print, file=sys.stderr)
 if API_TOKEN is not None:
     HTTP.auth = tuple(API_TOKEN.split(':'))
 
+else:
+    log(
+        "No API token set! You can do this by setting the environment variable "
+        "API_TOKEN to `<username>:<personal access token>`"
+    )
+
 
 def loadVersions(url=MASTER):
     json_output = subprocess.check_output([
