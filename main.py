@@ -106,9 +106,15 @@ def stripRelease(repo, release):
                 repo.lower() + '-',
                 repo.lower() + '_',
                 repo.lower() + '.',
+                repo.lower() + '/',
                 repo.upper() + '-',
                 repo.upper() + '_',
                 repo.upper() + '.',
+                repo.upper() + '/',
+                repo + '-',
+                repo + '_',
+                repo + '.',
+                repo + '/',
                ]
     for prefix in prefixes:
         release = removePrefix(prefix, release)
