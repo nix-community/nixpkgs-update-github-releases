@@ -99,12 +99,12 @@ def stripRelease(repo, release):
     rawPrefixes = [*'v version release stable'.split(), repo]
     joiners = [*'- _ . /'.split(), '']
     modifiers = [str.lower, str.upper, str.title, lambda x: x]
-    prefixes = {
+    prefixes = [
         modifier(raw) + joiner
         for modifier in modifiers
         for joiner in joiners
         for raw in rawPrefixes
-    }
+    ]
 
     for prefix in prefixes:
         release = removePrefix(prefix, release)
