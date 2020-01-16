@@ -1,10 +1,12 @@
 #!/usr/bin/env nix-shell
-#!nix-shell -p "python3.withPackages (p: with p; [requests])" -i python3
+#!nix-shell -p "python3.withPackages (p: with p; [requests dateutil])" -i python3
 
 import subprocess
 import json
 import re
 import requests
+import datetime
+import dateutil.parser
 from urllib.parse import urlparse
 
 from pathlib import Path
@@ -84,8 +86,10 @@ def latestRelease(user, repo):
     if 'message' in result:
         return
 
-    # pprint(result)
-    return result.get('tag_name')
+    release = result.get('tag_name')
+    date = dateutil.parser.parse(result.get('created_at'))
+
+    return release, date
 
 
 def removePrefix(prefix, string):
@@ -128,15 +132,46 @@ def skipPrerelease(release):
     return False
 
 
+# Returns either a date object or none.
+def parseUnstable(release):
+    unstable = "unstable-"
+    if not release.startswith(unstable):
+        return
+
+    release_ = removePrefix("unstable-", release)
+
+    try:
+        date_obj = datetime.datetime.strptime(release_, "%Y-%m-%d")
+    except ValueError:
+        log(
+            f"Could not parse unstable date {release}! This should probably be "
+            "fixed, either in nixpkgs or in this script."
+        )
+        return
+
+    return date_obj
+
+
 def getNextVersion(version, homepage):
     userRepo = getUserRepoPair(homepage)
 
     if userRepo is None:
         return
 
-    nextVersion = latestRelease(*userRepo)
+    nextVersionDate = latestRelease(*userRepo)
 
-    if nextVersion is None:
+    if nextVersionDate is None:
+        return
+
+    nextVersion, nextDate = nextVersionDate
+
+    currDate = parseUnstable(version)
+
+    if currDate is not None and nextDate.date() <= currDate.date():
+        log(
+            f"Discarding unfit version {nextVersion} ({nextDate}), because it "
+            f"is older than our current version {version} ({currDate})."
+        )
         return
 
     # If this version matches the previous version, discard it.
