@@ -203,7 +203,7 @@ def updateLines(meta):
 def main():
     meta = loadVersions()
     for line in updateLines(meta):
-        print(", ".join(line))
+        print(" ".join(line))
 
 
 if __name__ == '__main__':
