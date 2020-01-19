@@ -1,5 +1,5 @@
 #!/usr/bin/env nix-shell
-#!nix-shell -p "python3.withPackages (p: with p; [requests dateutil])" -i python3
+#!nix-shell -i python3
 
 import subprocess
 import json
