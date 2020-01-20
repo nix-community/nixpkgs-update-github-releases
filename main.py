@@ -152,6 +152,19 @@ def parseUnstable(release):
     return date_obj
 
 
+def parseVersion(release):
+    return [int(x) for x in release.split(".")]
+
+
+def versionNewer(v1, v2):
+    """Parses two 'standard' values, and checks if one is newer than the other.
+
+    May raise ValueError if it could not parse one of the versions.
+    """
+    v1, v2 = map(parseVersion, [v1, v2])
+    return v1 < v2
+
+
 def getNextVersion(version, homepage):
     userRepo = getUserRepoPair(homepage)
 
@@ -174,18 +187,21 @@ def getNextVersion(version, homepage):
         )
         return
 
-    # If this version matches the previous version, discard it.
-    # We can't do `version in nextVersion`, because it would discard
-    # 0.1 => 0.1.1
-    if nextVersion.endswith(version):
-        return
-
     if skipPrerelease(nextVersion):
         return
 
-    stripped = stripRelease(userRepo[1], nextVersion)
+    nextVersion = stripRelease(userRepo[1], nextVersion)
 
-    return stripped
+    if version == nextVersion:
+        return
+
+    try:
+        if not versionNewer(version, nextVersion):
+            return
+    except ValueError:
+        log("Couldn't parse one of:", version, nextVersion)
+
+    return nextVersion
 
 
 def updateLines(meta):
