@@ -10,10 +10,13 @@ import dateutil.parser
 from urllib.parse import urlparse
 import libversion
 
+from cachecontrol import CacheControl
+from cachecontrol.caches import FileCache
 from pathlib import Path
 from pprint import pprint
 from time import sleep
 from functools import partial
+from collections import defaultdict
 
 import os
 import sys
@@ -23,19 +26,24 @@ LOAD_META_FROM_PATH = DOT / "loadMetaFromPath.nix"
 MASTER = "https://github.com/nixos/nixpkgs/archive/master.tar.gz"
 API_TOKEN = os.environ.get('API_TOKEN')
 
-HTTP = requests.session()
+# Keep stats about caching
+CACHE_STATS = defaultdict(int)
+
+sess = requests.session()
 
 log = partial(print, file=sys.stderr)
-plog = partial(pprint, file=sys.stderr)
+plog = partial(pprint, stream=sys.stderr)
 
 if API_TOKEN is not None:
-    HTTP.auth = tuple(API_TOKEN.split(':'))
+    sess.auth = tuple(API_TOKEN.split(':'))
 
 else:
     log(
         "No API token set! You can do this by setting the environment variable "
         "API_TOKEN to `<username>:<personal access token>`"
     )
+
+HTTP = CacheControl(sess, cache=FileCache('.webcache'))
 
 
 def loadVersions(url=MASTER):
@@ -76,19 +84,21 @@ def latestRelease(user, repo):
 
     url = f'https://api.github.com/repos/{user}/{repo}/releases/latest'
     resp = HTTP.get(url)
-
     rateRemaining = resp.headers.get('X-RateLimit-Remaining')
 
     if rateRemaining is None:
         log('Host did not send X-RateLimit-Remaining header.')
-        log(resp.text)
+        log('Status code:', resp.status_code)
 
         return
 
     rateRemaining = int(rateRemaining)
 
-    if rateRemaining % 100 == 0:
+    if not resp.from_cache and rateRemaining % 100 == 0:
         log(rateRemaining, 'requests remaining this hour!')
+
+    # Save cache stats:
+    CACHE_STATS[resp.from_cache] += 1
 
     if rateRemaining == 0:
         rateReset = int(resp.headers.get('X-RateLimit-Reset'))
@@ -215,9 +225,13 @@ def updateLines(meta):
 
 
 def main():
-    meta = loadVersions()
-    for line in updateLines(meta):
-        print(" ".join(line))
+    try:
+        meta = loadVersions()
+        for line in updateLines(meta):
+            print(" ".join(line))
+    finally:
+        log("Cached stats:")
+        plog(dict(CACHE_STATS))
 
 
 if __name__ == '__main__':
