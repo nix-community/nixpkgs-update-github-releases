@@ -100,7 +100,7 @@ def removePrefix(prefix, string):
 
 
 def stripRelease(repo, release):
-    rawPrefixes = [*'v version release stable'.split(), repo]
+    rawPrefixes = [*'v r version release stable'.split(), repo]
     joiners = [*'- _ . /'.split(), '']
     modifiers = [str.lower, str.upper, str.title, lambda x: x]
     prefixes = [
