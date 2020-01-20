@@ -8,6 +8,7 @@ import requests
 import datetime
 import dateutil.parser
 from urllib.parse import urlparse
+import libversion
 
 from pathlib import Path
 from pprint import pprint
@@ -152,19 +153,6 @@ def parseUnstable(release):
     return date_obj
 
 
-def parseVersion(release):
-    return [int(x) for x in release.split(".")]
-
-
-def versionNewer(v1, v2):
-    """Parses two 'standard' values, and checks if one is newer than the other.
-
-    May raise ValueError if it could not parse one of the versions.
-    """
-    v1, v2 = map(parseVersion, [v1, v2])
-    return v1 < v2
-
-
 def getNextVersion(version, homepage):
     userRepo = getUserRepoPair(homepage)
 
@@ -192,14 +180,8 @@ def getNextVersion(version, homepage):
 
     nextVersion = stripRelease(userRepo[1], nextVersion)
 
-    if version == nextVersion:
+    if libversion.version_compare(version, nextVersion) >= 0:
         return
-
-    try:
-        if not versionNewer(version, nextVersion):
-            return
-    except ValueError:
-        log("Couldn't parse one of:", version, nextVersion)
 
     return nextVersion
 
