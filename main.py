@@ -26,6 +26,7 @@ API_TOKEN = os.environ.get('API_TOKEN')
 HTTP = requests.session()
 
 log = partial(print, file=sys.stderr)
+plog = partial(pprint, file=sys.stderr)
 
 if API_TOKEN is not None:
     HTTP.auth = tuple(API_TOKEN.split(':'))
@@ -76,12 +77,26 @@ def latestRelease(user, repo):
     url = f'https://api.github.com/repos/{user}/{repo}/releases/latest'
     resp = HTTP.get(url)
 
-    rateRemaining = int(resp.headers['X-RateLimit-Remaining'])
+    rateRemaining = resp.headers.get('X-RateLimit-Remaining')
+
+    if rateRemaining is None:
+        log('Host did not send X-RateLimit-Remaining header.')
+        log(resp.text)
+
+        return
+
+    rateRemaining = int(rateRemaining)
+
     if rateRemaining % 100 == 0:
         log(rateRemaining, 'requests remaining this hour!')
 
     if rateRemaining == 0:
-        raise requests.HTTPError("No more rate remaining")
+        rateReset = int(resp.headers.get('X-RateLimit-Reset'))
+        resetDT = datetime.datetime.fromtimestamp(rateReset)
+        now = datetime.datetime.now()
+        remaining = resetDT-now
+        raise requests.HTTPError(
+            f"No more rate remaining. More rate will be available at {resetDT} ({remaining} from now.)")
 
     result = resp.json()
     if 'message' in result:
@@ -136,18 +151,19 @@ def skipPrerelease(release):
 # Returns either a date object or none.
 def parseUnstable(release):
     unstable = "unstable-"
-    if not release.startswith(unstable):
-        return
+
+    shouldParse = release.startswith(unstable)
 
     release_ = removePrefix("unstable-", release)
 
     try:
         date_obj = datetime.datetime.strptime(release_, "%Y-%m-%d")
     except ValueError:
-        log(
-            f"Could not parse unstable date {release}! This should probably be "
-            "fixed, either in nixpkgs or in this script."
-        )
+        if shouldParse:
+            log(
+                f"Could not parse unstable date {release}! This should probably "
+                "be fixed, either in nixpkgs or in this script."
+            )
         return
 
     return date_obj
@@ -171,7 +187,7 @@ def getNextVersion(version, homepage):
     if currDate is not None and nextDate.date() <= currDate.date():
         log(
             f"Discarding unfit version {nextVersion} ({nextDate}), because it "
-            f"is older than our current version {version} ({currDate})."
+            f"is older than our current version {version}."
         )
         return
 
