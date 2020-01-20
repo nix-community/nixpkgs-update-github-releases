@@ -143,7 +143,7 @@ def stripRelease(repo, release):
 
 # Filter out pre-releases that weren't marked on GitHub as such
 def skipPrerelease(release):
-    lower = release.lower()
+    release = release.lower()
     markers = ["nightly",
                "develop",
                "rc",
