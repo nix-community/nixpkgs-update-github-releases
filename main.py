@@ -152,10 +152,8 @@ def skipPrerelease(release):
                "snapshot",
                "testing",
                ]
-    for marker in markers:
-        if marker in release:
-            return True
-    return False
+
+    return any(marker in release for marker in markers)
 
 
 # Returns either a date object or none.
