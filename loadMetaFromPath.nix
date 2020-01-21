@@ -13,13 +13,19 @@ let
       let
         result = builtins.tryEval (
           deepSeqId (
-            assert (value.version or null) != null;
-            assert (value.meta.homepage or null) != null;
-            assert pkgs.lib.isString value.version;
-            assert pkgs.lib.isString value.meta.homepage;
+            let
+              version =
+                value.version or
+                null;
+              homepage =
+                value.src.meta.homepage or
+                value.meta.homepage or
+                null;
+            in
+            assert pkgs.lib.isString version;
+            assert pkgs.lib.isString homepage;
             {
-              inherit (value) version;
-              inherit (value.meta) homepage;
+              inherit version homepage;
             }
           )
         );
