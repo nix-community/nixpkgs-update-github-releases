@@ -66,8 +66,9 @@ def getUserRepoPair(url):
     if parsed.netloc != "github.com":
         return
 
-    m = re.match(r'^\/([\w\-]+)/([\w\-]+)/?$', parsed.path)
+    m = re.match(r'^\/([^/]+)/([^/]+)(?:/|/wiki)?$', parsed.path)
     if m is None:
+        log(f'Could not parse github url: {url}')
         return
 
     user, repo = m.groups()
