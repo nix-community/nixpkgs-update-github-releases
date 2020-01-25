@@ -24,7 +24,13 @@ import sys
 DOT = Path(__file__).resolve().parent
 LOAD_META_FROM_PATH = DOT / "loadMetaFromPath.nix"
 MASTER = "https://github.com/nixos/nixpkgs/archive/master.tar.gz"
-API_TOKEN = os.environ.get('API_TOKEN')
+API_TOKEN_FILE = os.environ.get('API_TOKEN_FILE')
+
+if API_TOKEN_FILE is not None:
+    with open(API_TOKEN_FILE, 'r') as content_file:
+        API_TOKEN = content_file.read().strip()
+else:
+    API_TOKEN = os.environ.get('API_TOKEN')
 
 # Keep stats about caching
 CACHE_STATS = defaultdict(int)
