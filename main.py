@@ -27,7 +27,6 @@ plog = partial(pprint, stream=sys.stderr)
 DOT = Path(__file__).resolve().parent
 LOAD_META_FROM_PATH = DOT / "loadMetaFromPath.nix"
 MASTER = "https://github.com/nixos/nixpkgs/archive/master.tar.gz"
-API_TOKEN = os.environ.get('API_TOKEN')
 
 CACHE_DIR = (
     Path(os.environ.get('XDG_CACHE_HOME') or Path.home() / '.cache')
@@ -40,6 +39,15 @@ log('Cache dir:', CACHE_DIR.resolve())
 CACHE_STATS = defaultdict(int)
 
 sess = requests.session()
+
+try:
+    API_TOKEN_PATH = os.environ.get('API_TOKEN_FILE', DOT/'API_TOKEN')
+    with open(API_TOKEN_PATH, 'r') as token_file:
+        API_TOKEN = token_file.read().strip()
+
+except:
+    API_TOKEN = os.environ.get('API_TOKEN')
+
 
 if API_TOKEN is not None:
     sess.auth = tuple(API_TOKEN.split(':'))
