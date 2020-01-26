@@ -79,11 +79,11 @@ def latestRelease(user, repo):
     '''
     See also:
 
-    "GET /repos/:owner/:repo/releases/latest"
+    "GET /repos/:owner/:repo/releases"
     https://developer.github.com/v3/repos/releases/#get-the-latest-release
     '''
 
-    url = f'https://api.github.com/repos/{user}/{repo}/releases/latest'
+    url = f'https://api.github.com/repos/{user}/{repo}/releases'
     resp = HTTP.get(url)
     rateRemaining = resp.headers.get('X-RateLimit-Remaining')
 
@@ -113,8 +113,27 @@ def latestRelease(user, repo):
     if 'message' in result:
         return
 
-    release = result.get('tag_name')
-    date = dateutil.parser.parse(result.get('created_at'))
+    if not result:
+        # No releases
+        return
+
+    verboseMatch = False
+    for tag in result:
+        release = tag.get('tag_name')
+        if tag.get('prerelease'):
+            continue
+        if skipPrerelease(release):
+            log('Skipping non-tagged prerelease', release)
+            verboseMatch = True
+            continue
+        if verboseMatch:
+            log('Rescued it with', release, ':)')
+        break
+    else:
+        # No matching releases
+        return
+
+    date = dateutil.parser.parse(tag.get('created_at'))
 
     return release, date
 
