@@ -254,6 +254,8 @@ def main():
         meta = loadVersions()
         for line in updateLines(meta):
             print(" ".join(line))
+    except KeyboardInterrupt:
+        log(' Shutting down...')
     finally:
         log("Cached stats:")
         plog(dict(CACHE_STATS))
