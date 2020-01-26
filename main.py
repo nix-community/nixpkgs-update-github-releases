@@ -1,5 +1,5 @@
 #!/usr/bin/env nix-shell
-#!nix-shell -i python3
+#!nix-shell -i python3 ./shell.nix
 
 import subprocess
 import json
