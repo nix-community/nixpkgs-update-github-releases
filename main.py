@@ -21,18 +21,25 @@ from collections import defaultdict
 import os
 import sys
 
+log = partial(print, file=sys.stderr)
+plog = partial(pprint, stream=sys.stderr)
+
 DOT = Path(__file__).resolve().parent
 LOAD_META_FROM_PATH = DOT / "loadMetaFromPath.nix"
 MASTER = "https://github.com/nixos/nixpkgs/archive/master.tar.gz"
 API_TOKEN = os.environ.get('API_TOKEN')
 
+CACHE_DIR = (
+    Path(os.environ.get('XDG_CACHE_HOME') or Path.home() / '.cache')
+    / 'nixpkgs-update-github-releases'
+)
+
+log('Cache dir:', CACHE_DIR.resolve())
+
 # Keep stats about caching
 CACHE_STATS = defaultdict(int)
 
 sess = requests.session()
-
-log = partial(print, file=sys.stderr)
-plog = partial(pprint, stream=sys.stderr)
 
 if API_TOKEN is not None:
     sess.auth = tuple(API_TOKEN.split(':'))
@@ -43,7 +50,7 @@ else:
         "API_TOKEN to `<username>:<personal access token>`"
     )
 
-HTTP = CacheControl(sess, cache=FileCache('.webcache'))
+HTTP = CacheControl(sess, cache=FileCache(CACHE_DIR.resolve()))
 
 
 def loadVersions(url=MASTER):
