@@ -17,6 +17,7 @@ from pprint import pprint
 from time import sleep
 from functools import partial
 from collections import defaultdict
+from itertools import count
 
 import os
 import sys
@@ -120,6 +121,7 @@ def getEndpoint(endpoint, base='https://api.github.com/', max_retries=10):
 
         if status == 404:
             log('Endpoint', endpoint, 'not found')
+            return
 
         if status == 403:
             message = resp.json().get('message', '')
@@ -162,7 +164,7 @@ def getEndpoint(endpoint, base='https://api.github.com/', max_retries=10):
         raise Exception(f"No good response after {max_retries} tries")
 
 
-def latestRelease(user, repo):
+def iterReleases(user, repo):
     '''
     See also:
 
@@ -170,17 +172,29 @@ def latestRelease(user, repo):
     https://developer.github.com/v3/repos/releases/#get-the-latest-release
     '''
 
-    result = getEndpoint(f'/repos/{user}/{repo}/releases')
+    for page in count(1):
+        if page > 1:
+            log('Fetching page', page, f'for {user}/{repo}')
 
-    if 'message' in result:
-        return
+        result = getEndpoint(f'/repos/{user}/{repo}/releases?page={page}')
 
-    if not result:
-        # No releases
-        return
+        if result is None:
+            return
+
+        yield from result
+
+        # 30 seems to be the maximum number of releases the API is willing to
+        # return on a single page. The API is perfectly willing to return an
+        # empty page if we request out-of-bounds pages, but this saves requests.
+        if len(result) < 30:
+            return
+
+
+def latestRelease(user, repo):
+    releases = iterReleases(user, repo)
 
     verboseMatch = False
-    for tag in result:
+    for tag in releases:
         release = tag.get('tag_name')
         if tag.get('prerelease'):
             continue
