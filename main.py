@@ -7,7 +7,7 @@ import re
 import requests
 import datetime
 import dateutil.parser
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 import libversion
 
 from cachecontrol import CacheControl
@@ -90,6 +90,78 @@ def getUserRepoPair(url):
     return user, repo
 
 
+def sleepUntil(timestamp):
+    if not isinstance(timestamp, datetime.datetime):
+        timestamp = datetime.datetime.fromtimestamp(timestamp)
+
+    log('Sleeping until', timestamp)
+
+    now = datetime.datetime.now()
+    while now < timestamp:
+        timeDiff = timestamp - datetime.datetime.now()
+        log(timeDiff, 'left')
+        toSleep = timeDiff / 2
+        sleep(toSleep.total_seconds() + 1)
+        now = datetime.datetime.now()
+
+
+def getEndpoint(endpoint, base='https://api.github.com/', max_retries=10):
+    url = urljoin(base, endpoint)
+    error_sleep = 1
+    for _ in range(max_retries):
+        resp = HTTP.get(url)
+        status = resp.status_code
+
+        if status == 500:
+            log("Host is having trouble. Let's give them some time.")
+            sleep(error_sleep)
+            error_sleep *= 2
+            continue
+
+        if status == 404:
+            log('Endpoint', endpoint, 'not found')
+
+        if status == 403:
+            message = resp.json().get('message', '')
+            if message:
+                log(message)
+
+            if 'exceeded' in message:
+                # Fall through to rateRemaining logic
+                pass
+            elif 'abuse' in message:
+                sleep(10)
+                continue
+            else:
+                raise Exception("Got 403, but we can't tell why.", message)
+
+        rateRemaining = resp.headers.get('X-RateLimit-Remaining')
+        if rateRemaining is None:
+            log('Host did not send X-RateLimit-Remaining header.')
+            log('Status code:', resp.status_code)
+
+            sleep(1)
+            continue
+
+        rateRemaining = int(rateRemaining)
+
+        if not resp.from_cache and rateRemaining % 100 == 0:
+            log(rateRemaining, 'requests remaining this hour!')
+
+        if rateRemaining == 0:
+            log('No rate :(')
+            plog(dict(resp.headers))
+            sleepUntil(int(resp.headers['X-Ratelimit-Reset']))
+            continue
+
+        # Save cache stats:
+        CACHE_STATS[resp.from_cache] += 1
+
+        return resp.json()
+    else:
+        raise Exception(f"No good response after {max_retries} tries")
+
+
 def latestRelease(user, repo):
     '''
     See also:
@@ -98,33 +170,8 @@ def latestRelease(user, repo):
     https://developer.github.com/v3/repos/releases/#get-the-latest-release
     '''
 
-    url = f'https://api.github.com/repos/{user}/{repo}/releases'
-    resp = HTTP.get(url)
-    rateRemaining = resp.headers.get('X-RateLimit-Remaining')
+    result = getEndpoint(f'/repos/{user}/{repo}/releases')
 
-    if rateRemaining is None:
-        log('Host did not send X-RateLimit-Remaining header.')
-        log('Status code:', resp.status_code)
-
-        return
-
-    rateRemaining = int(rateRemaining)
-
-    if not resp.from_cache and rateRemaining % 100 == 0:
-        log(rateRemaining, 'requests remaining this hour!')
-
-    # Save cache stats:
-    CACHE_STATS[resp.from_cache] += 1
-
-    if rateRemaining == 0:
-        rateReset = int(resp.headers.get('X-RateLimit-Reset'))
-        resetDT = datetime.datetime.fromtimestamp(rateReset)
-        now = datetime.datetime.now()
-        remaining = resetDT-now
-        raise requests.HTTPError(
-            f"No more rate remaining. More rate will be available at {resetDT} ({remaining} from now.)")
-
-    result = resp.json()
     if 'message' in result:
         return
 
