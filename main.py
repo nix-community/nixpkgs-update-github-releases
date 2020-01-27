@@ -113,6 +113,9 @@ def getEndpoint(endpoint, base='https://api.github.com/', max_retries=10):
         resp = HTTP.get(url)
         status = resp.status_code
 
+        # Save cache stats:
+        CACHE_STATS[resp.from_cache] += 1
+
         if status == 500:
             log("Host is having trouble. Let's give them some time.")
             sleep(error_sleep)
@@ -155,9 +158,6 @@ def getEndpoint(endpoint, base='https://api.github.com/', max_retries=10):
             plog(dict(resp.headers))
             sleepUntil(int(resp.headers['X-Ratelimit-Reset']))
             continue
-
-        # Save cache stats:
-        CACHE_STATS[resp.from_cache] += 1
 
         return resp.json()
     else:
