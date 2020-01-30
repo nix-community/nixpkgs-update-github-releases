@@ -82,7 +82,12 @@ def getUserRepoPair(url):
     if parsed.netloc != "github.com":
         return
 
-    m = re.match(r'^\/([^/]+)/([^/]+)(?:/|/wiki)?$', parsed.path)
+    m = re.match(r'''
+      ^(?:/downloads)? # Some download links use /downloads/owner/repo/version/, this filters that.
+      /([^/]+) # owner
+      /([^/]+) # repo
+      (?:/?|/wiki/?|/.+\.tar.gz|/releases/.+|/archive/.+|/tarball/.+)$
+      ''', parsed.path, re.VERBOSE)
     if m is None:
         log(f'Could not parse github url: {url}')
         return
@@ -309,9 +314,14 @@ def getNextVersion(version, homepage):
 def updateLines(meta):
     for name, values in meta.items():
         version = values['version']
-        homepage = values['homepage']
 
-        nextVersion = getNextVersion(**values)
+        for page in values['pages']:
+            if getUserRepoPair(page) is not None:
+                break
+        else:
+            continue
+
+        nextVersion = getNextVersion(version, page)
         if nextVersion is None:
             continue
 

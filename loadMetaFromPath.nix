@@ -7,6 +7,7 @@ assert path != null || url != null;
 let
   path' = if url == null then path else (builtins.fetchTarball url);
   deepSeqId = x: builtins.deepSeq x x;
+  maybeToList = x: if x == null then [] else [x];
   pkgs = import path' {};
   versions = pkgs.lib.mapAttrs (
     name: value:
@@ -17,15 +18,16 @@ let
               version =
                 value.version or
                 null;
-              homepage =
-                value.src.meta.homepage or
-                value.meta.homepage or
-                null;
+              pages =
+                maybeToList (value.src.meta.homepage or null) ++
+                value.src.urls or [] ++
+                maybeToList (value.meta.homepage or null) ++
+                [];
             in
             assert pkgs.lib.isString version;
-            assert pkgs.lib.isString homepage;
+            assert pkgs.lib.all pkgs.lib.isString pages;
             {
-              inherit version homepage;
+              inherit version pages;
             }
           )
         );
