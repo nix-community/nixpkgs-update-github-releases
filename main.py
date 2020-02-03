@@ -316,16 +316,21 @@ def updateLines(meta):
         version = values['version']
 
         for page in values['pages']:
-            if getUserRepoPair(page) is not None:
+            userRepo = getUserRepoPair(page)
+            if userRepo is not None:
                 break
         else:
             continue
+
+        user, repo = userRepo
 
         nextVersion = getNextVersion(version, page)
         if nextVersion is None:
             continue
 
-        yield name, version, nextVersion
+        url = f'https://github.com/{user}/{repo}/releases'
+
+        yield name, version, nextVersion, url
 
 
 def main():
