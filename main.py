@@ -171,6 +171,7 @@ def getEndpoint(endpoint, base='https://api.github.com/', max_retries=10):
             log('No rate :(')
             plog(dict(resp.headers))
             sleepUntil(int(resp.headers['X-Ratelimit-Reset']))
+            sleep(5)  # in case of clock disagreement, add a little buffer
             continue
 
         return resp.json()
