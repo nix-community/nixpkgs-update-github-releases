@@ -347,7 +347,7 @@ def main():
     try:
         meta = loadVersions()
         for line in updateLines(meta):
-            print(" ".join(line))
+            print(*line, flush=True)
     except KeyboardInterrupt:
         log(' Shutting down...')
     finally:
