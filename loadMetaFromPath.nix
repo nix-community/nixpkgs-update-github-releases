@@ -1,5 +1,5 @@
 # Not perfect, but it works™️
-{ path ? null, url ? null }:
+{ path ? null, url ? null, universeFile }:
 
 assert path == null || url == null;
 assert path != null || url != null;
@@ -9,9 +9,11 @@ let
   deepSeqId = x: builtins.deepSeq x x;
   maybeToList = x: if x == null then [] else [x];
   pkgs = import path' {};
-  versions = pkgs.lib.mapAttrs (
-    name: value:
+  versions = map (
+    name:
       let
+        path = pkgs.lib.splitString "." name;
+        value = pkgs.lib.getAttrFromPath path pkgs;
         result = builtins.tryEval (
           deepSeqId (
             let
@@ -26,7 +28,7 @@ let
             in
             assert pkgs.lib.isString version;
             assert pkgs.lib.all pkgs.lib.isString pages;
-            {
+            pkgs.lib.nameValuePair name {
               inherit version pages;
             }
           )
@@ -34,7 +36,7 @@ let
       in
         if result.success then result.value else null
     )
-    pkgs;
-  filtered = pkgs.lib.filterAttrs (_name: x: x != null) versions;
+    (pkgs.lib.splitString "\n" (pkgs.lib.fileContents universeFile));
+  filtered = pkgs.lib.filter (x: x != null) versions;
 in
-  filtered
+  pkgs.lib.listToAttrs filtered
