@@ -141,6 +141,9 @@ def getEndpoint(endpoint, base='https://api.github.com/', max_retries=10):
             elif 'abuse' in message:
                 sleep(10)
                 continue
+            elif "blocked" in message:
+                log("Endpoint", endpoint, "blocked")
+                return
             else:
                 raise Exception("Got 403, but we can't tell why.", message)
 
