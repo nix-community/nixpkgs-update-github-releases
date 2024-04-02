@@ -9,6 +9,7 @@ import datetime
 import dateutil.parser
 from urllib.parse import urlparse, urljoin
 import libversion
+import tempfile
 
 from cachecontrol import CacheControl
 from cachecontrol.caches import FileCache
@@ -63,12 +64,20 @@ HTTP = CacheControl(sess, cache=FileCache(CACHE_DIR.resolve()))
 
 
 def loadVersions(url=MASTER):
-    json_output = subprocess.check_output([
-        'nix-instantiate', str(LOAD_META_FROM_PATH),
-        '--arg', 'url', str(url),
-        '--eval', '--json',
-        '--read-write-mode',
-    ])
+    with tempfile.NamedTemporaryFile(mode='w') as f:
+        subprocess.check_call([
+            'nix-env', '-f', '<nixpkgs>',
+            '-I', f'nixpkgs={url}',
+            '-qaP', '--no-name',
+            '--arg', 'config', 'import (<nixpkgs> + "/pkgs/top-level/packages-config.nix")',
+        ], stdout=f)
+        json_output = subprocess.check_output([
+            'nix-instantiate', str(LOAD_META_FROM_PATH),
+            '--arg', 'universeFile', f.name,
+            '--arg', 'url', str(url),
+            '--eval', '--json',
+            '--read-write-mode',
+        ])
 
     return json.loads(json_output)
 
@@ -162,6 +171,7 @@ def getEndpoint(endpoint, base='https://api.github.com/', max_retries=10):
             log('No rate :(')
             plog(dict(resp.headers))
             sleepUntil(int(resp.headers['X-Ratelimit-Reset']))
+            sleep(5)  # in case of clock disagreement, add a little buffer
             continue
 
         return resp.json()
@@ -337,7 +347,7 @@ def main():
     try:
         meta = loadVersions()
         for line in updateLines(meta):
-            print(" ".join(line))
+            print(*line, flush=True)
     except KeyboardInterrupt:
         log(' Shutting down...')
     finally:
