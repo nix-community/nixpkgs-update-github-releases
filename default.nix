@@ -5,6 +5,6 @@ rec {
   inherit pkgs;
 
   interpreter = python3.withPackages (p: with p;
-    [requests dateutil libversion cachecontrol lockfile]
+    [requests dateutil libversion cachecontrol lockfile filelock]
   );
 }
