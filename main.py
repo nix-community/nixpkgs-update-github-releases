@@ -198,13 +198,14 @@ def getEndpoint(endpoint, base="https://api.github.com/", max_retries=10):
             sleep(5)  # in case of clock disagreement, add a little buffer
             continue
 
-    try:
-        return resp.json()
-    except JSONDecodeError:
-        # GitHub returns empty JSON sometimes? Very flaky, but anoying if it happens...
-        # https://github.com/nix-community/nixpkgs-update-github-releases/issues/8
-        sleep(error_sleep)
-        error_sleep *= 2
+        try:
+            return resp.json()
+        except JSONDecodeError:
+            # GitHub returns empty JSON sometimes? Very flaky, but anoying if it happens...
+            # https://github.com/nix-community/nixpkgs-update-github-releases/issues/8
+            sleep(error_sleep)
+            error_sleep *= 2
+            continue
     else:
         raise Exception(f"No good response after {max_retries} tries")
 
