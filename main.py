@@ -30,11 +30,11 @@ LOAD_META_FROM_PATH = DOT / "loadMetaFromPath.nix"
 MASTER = "https://github.com/nixos/nixpkgs/archive/master.tar.gz"
 
 CACHE_DIR = (
-    Path(os.environ.get('XDG_CACHE_HOME') or Path.home() / '.cache')
-    / 'nixpkgs-update-github-releases'
+    Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
+    / "nixpkgs-update-github-releases"
 )
 
-log('Cache dir:', CACHE_DIR.resolve())
+log("Cache dir:", CACHE_DIR.resolve())
 
 # Keep stats about caching
 CACHE_STATS = defaultdict(int)
@@ -42,16 +42,16 @@ CACHE_STATS = defaultdict(int)
 sess = requests.session()
 
 try:
-    API_TOKEN_PATH = os.environ.get('API_TOKEN_FILE', DOT/'API_TOKEN')
-    with open(API_TOKEN_PATH, 'r') as token_file:
+    API_TOKEN_PATH = os.environ.get("API_TOKEN_FILE", DOT / "API_TOKEN")
+    with open(API_TOKEN_PATH, "r") as token_file:
         API_TOKEN = token_file.read().strip()
 
 except:
-    API_TOKEN = os.environ.get('API_TOKEN')
+    API_TOKEN = os.environ.get("API_TOKEN")
 
 
 if API_TOKEN is not None:
-    sess.auth = tuple(API_TOKEN.split(':'))
+    sess.auth = tuple(API_TOKEN.split(":"))
 
 else:
     log(
@@ -63,20 +63,37 @@ HTTP = CacheControl(sess, cache=FileCache(CACHE_DIR.resolve()))
 
 
 def loadVersions(url=MASTER):
-    with tempfile.NamedTemporaryFile(mode='w') as f:
-        subprocess.check_call([
-            'nix-env', '-f', '<nixpkgs>',
-            '-I', f'nixpkgs={url}',
-            '-qaP', '--no-name',
-            '--arg', 'config', 'import (<nixpkgs> + "/pkgs/top-level/packages-config.nix")',
-        ], stdout=f)
-        json_output = subprocess.check_output([
-            'nix-instantiate', str(LOAD_META_FROM_PATH),
-            '--arg', 'universeFile', f.name,
-            '--arg', 'url', str(url),
-            '--eval', '--json',
-            '--read-write-mode',
-        ])
+    with tempfile.NamedTemporaryFile(mode="w") as f:
+        subprocess.check_call(
+            [
+                "nix-env",
+                "-f",
+                "<nixpkgs>",
+                "-I",
+                f"nixpkgs={url}",
+                "-qaP",
+                "--no-name",
+                "--arg",
+                "config",
+                'import (<nixpkgs> + "/pkgs/top-level/packages-config.nix")',
+            ],
+            stdout=f,
+        )
+        json_output = subprocess.check_output(
+            [
+                "nix-instantiate",
+                str(LOAD_META_FROM_PATH),
+                "--arg",
+                "universeFile",
+                f.name,
+                "--arg",
+                "url",
+                str(url),
+                "--eval",
+                "--json",
+                "--read-write-mode",
+            ]
+        )
 
     return json.loads(json_output)
 
@@ -90,14 +107,18 @@ def getUserRepoPair(url):
     if parsed.netloc != "github.com":
         return
 
-    m = re.match(r'''
+    m = re.match(
+        r"""
       ^(?:/downloads)? # Some download links use /downloads/owner/repo/version/, this filters that.
       /([^/]+) # owner
       /([^/]+) # repo
       (?:/?|/wiki/?|/.+\.tar.gz|/releases/.+|/archive/.+|/tarball/.+)$
-      ''', parsed.path, re.VERBOSE)
+      """,
+        parsed.path,
+        re.VERBOSE,
+    )
     if m is None:
-        log(f'Could not parse github url: {url}')
+        log(f"Could not parse github url: {url}")
         return
 
     user, repo = m.groups()
@@ -108,18 +129,18 @@ def sleepUntil(timestamp):
     if not isinstance(timestamp, datetime.datetime):
         timestamp = datetime.datetime.fromtimestamp(timestamp)
 
-    log('Sleeping until', timestamp)
+    log("Sleeping until", timestamp)
 
     now = datetime.datetime.now()
     while now < timestamp:
         timeDiff = timestamp - datetime.datetime.now()
-        log(timeDiff, 'left')
+        log(timeDiff, "left")
         toSleep = timeDiff / 2
         sleep(toSleep.total_seconds() + 1)
         now = datetime.datetime.now()
 
 
-def getEndpoint(endpoint, base='https://api.github.com/', max_retries=10):
+def getEndpoint(endpoint, base="https://api.github.com/", max_retries=10):
     url = urljoin(base, endpoint)
     error_sleep = 1
     for _ in range(max_retries):
@@ -136,18 +157,18 @@ def getEndpoint(endpoint, base='https://api.github.com/', max_retries=10):
             continue
 
         if status == 404:
-            log('Endpoint', endpoint, 'not found')
+            log("Endpoint", endpoint, "not found")
             return
 
         if status == 403:
-            message = resp.json().get('message', '')
+            message = resp.json().get("message", "")
             if message:
                 log(message)
 
-            if 'exceeded' in message:
+            if "exceeded" in message:
                 # Fall through to rateRemaining logic
                 pass
-            elif 'abuse' in message:
+            elif "abuse" in message:
                 sleep(10)
                 continue
             elif "blocked" in message:
@@ -156,10 +177,10 @@ def getEndpoint(endpoint, base='https://api.github.com/', max_retries=10):
             else:
                 raise Exception("Got 403, but we can't tell why.", message)
 
-        rateRemaining = resp.headers.get('X-RateLimit-Remaining')
+        rateRemaining = resp.headers.get("X-RateLimit-Remaining")
         if rateRemaining is None:
-            log('Host did not send X-RateLimit-Remaining header.')
-            log('Status code:', resp.status_code)
+            log("Host did not send X-RateLimit-Remaining header.")
+            log("Status code:", resp.status_code)
 
             sleep(1)
             continue
@@ -167,12 +188,12 @@ def getEndpoint(endpoint, base='https://api.github.com/', max_retries=10):
         rateRemaining = int(rateRemaining)
 
         if not resp.from_cache and rateRemaining % 100 == 0:
-            log(rateRemaining, 'requests remaining this hour!')
+            log(rateRemaining, "requests remaining this hour!")
 
         if rateRemaining == 0:
-            log('No rate :(')
+            log("No rate :(")
             plog(dict(resp.headers))
-            sleepUntil(int(resp.headers['X-Ratelimit-Reset']))
+            sleepUntil(int(resp.headers["X-Ratelimit-Reset"]))
             sleep(5)  # in case of clock disagreement, add a little buffer
             continue
 
@@ -182,18 +203,18 @@ def getEndpoint(endpoint, base='https://api.github.com/', max_retries=10):
 
 
 def iterReleases(user, repo):
-    '''
+    """
     See also:
 
     "GET /repos/:owner/:repo/releases"
     https://developer.github.com/v3/repos/releases/#get-the-latest-release
-    '''
+    """
 
     for page in count(1):
         if page > 1:
-            log('Fetching page', page, f'for {user}/{repo}')
+            log("Fetching page", page, f"for {user}/{repo}")
 
-        result = getEndpoint(f'/repos/{user}/{repo}/releases?page={page}')
+        result = getEndpoint(f"/repos/{user}/{repo}/releases?page={page}")
 
         if result is None:
             return
@@ -212,21 +233,21 @@ def latestRelease(user, repo):
 
     verboseMatch = False
     for tag in releases:
-        release = tag.get('tag_name')
-        if tag.get('prerelease'):
+        release = tag.get("tag_name")
+        if tag.get("prerelease"):
             continue
         if skipPrerelease(release):
-            log('Skipping non-tagged prerelease', release)
+            log("Skipping non-tagged prerelease", release)
             verboseMatch = True
             continue
         if verboseMatch:
-            log('Rescued it with', release, ':)')
+            log("Rescued it with", release, ":)")
         break
     else:
         # No matching releases
         return
 
-    date = dateutil.parser.parse(tag.get('created_at'))
+    date = dateutil.parser.parse(tag.get("created_at"))
 
     return release, date
 
@@ -235,12 +256,12 @@ def removePrefix(prefix, string):
     if not string.startswith(prefix):
         return string
 
-    return string[len(prefix):]
+    return string[len(prefix) :]
 
 
 def stripRelease(repo, release):
-    rawPrefixes = [*'v r version release stable'.split(), repo]
-    joiners = [*'- _ . /'.split(), '']
+    rawPrefixes = [*"v r version release stable".split(), repo]
+    joiners = [*"- _ . /".split(), ""]
     modifiers = [str.lower, str.upper, str.title, lambda x: x]
     prefixes = [
         modifier(raw) + joiner
@@ -257,14 +278,15 @@ def stripRelease(repo, release):
 # Filter out pre-releases that weren't marked on GitHub as such
 def skipPrerelease(release):
     release = release.lower()
-    markers = ["nightly",
-               "develop",
-               "rc",
-               "alpha",
-               "beta",
-               "snapshot",
-               "testing",
-               ]
+    markers = [
+        "nightly",
+        "develop",
+        "rc",
+        "alpha",
+        "beta",
+        "snapshot",
+        "testing",
+    ]
 
     return any(marker in release for marker in markers)
 
@@ -325,9 +347,9 @@ def getNextVersion(version, homepage):
 
 def updateLines(meta):
     for name, values in meta.items():
-        version = values['version']
+        version = values["version"]
 
-        for page in values['pages']:
+        for page in values["pages"]:
             userRepo = getUserRepoPair(page)
             if userRepo is not None:
                 break
@@ -340,7 +362,7 @@ def updateLines(meta):
         if nextVersion is None:
             continue
 
-        url = f'https://github.com/{user}/{repo}/releases'
+        url = f"https://github.com/{user}/{repo}/releases"
 
         yield name, version, nextVersion, url
 
@@ -351,11 +373,11 @@ def main():
         for line in updateLines(meta):
             print(*line, flush=True)
     except KeyboardInterrupt:
-        log(' Shutting down...')
+        log(" Shutting down...")
     finally:
         log("Cached stats:")
         plog(dict(CACHE_STATS))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
