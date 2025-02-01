@@ -157,6 +157,10 @@ def getEndpoint(endpoint, base="https://api.github.com/", max_retries=10):
             error_sleep *= 2
             continue
 
+        if status == 451:
+            log("Endpoint", endpoint, "Unavailable For Legal Reasons")
+            return
+
         if status == 404:
             log("Endpoint", endpoint, "not found")
             return
