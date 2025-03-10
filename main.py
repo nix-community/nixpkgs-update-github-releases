@@ -359,6 +359,10 @@ def getNextVersion(version, homepage):
 
 def updateLines(meta):
     for name, values in meta.items():
+        # skip python3*, packages have an updateScript
+        if name.startswith("python3"):
+            continue
+
         version = values["version"]
 
         for page in values["pages"]:
