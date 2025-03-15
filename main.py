@@ -96,7 +96,12 @@ def loadVersions(url=MASTER):
             ]
         )
 
-    return json.loads(json_output)
+    # seems github is flaky, reverse fetch order for better distribution
+    hour = datetime.datetime.now().hour
+    data = json.loads(json_output)
+    if hour > 11:
+        data = {key: data[key] for key in reversed(data)}
+    return data
 
 
 def getUserRepoPair(url):
