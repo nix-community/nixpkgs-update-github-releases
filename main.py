@@ -368,6 +368,10 @@ def updateLines(meta):
         if name.startswith("python3"):
             continue
 
+        # skip typstPackages*, package set
+        if name.startswith("typstPackages"):
+            continue
+
         version = values["version"]
 
         for page in values["pages"]:
